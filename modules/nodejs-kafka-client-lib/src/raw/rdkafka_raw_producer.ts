@@ -52,6 +52,7 @@ export class MLKafkaRawProducerOptions {
     skipAcknowledgements?: boolean
     messageMaxBytes?: number
     compressionCodec?: MLKafkaRawProdOpCompressionCodecEnum
+    compressionLevel?: number
 }
 
 /*interface MLKafkaRawProducerEventListenerMap {
@@ -127,6 +128,10 @@ export class MLKafkaRawProducer extends EventEmitter implements IRawMessageProdu
 
         if (this._options.compressionCodec) {
             this._globalConfig["compression.codec"] = this._options.compressionCodec;
+        }
+
+        if (this._options.compressionLevel) {
+            this._topicConfig["compression.level"] = this._options.compressionLevel;
         }
 
         this._globalConfig.dr_cb = true;
