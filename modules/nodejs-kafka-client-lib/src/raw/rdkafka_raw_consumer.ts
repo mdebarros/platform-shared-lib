@@ -51,6 +51,7 @@ export class MLKafkaRawConsumerOptions {
     useSyncCommit?: boolean
     outputType?: MLKafkaRawConsumerOutputType
     autoOffsetReset?: "earliest" | "latest" | "error" // default is latest
+    messageMaxBytes?: number
 }
 
 export class MLKafkaRawConsumer implements IRawMessageConsumer {
@@ -96,16 +97,18 @@ export class MLKafkaRawConsumer implements IRawMessageConsumer {
         if (this._options.autoOffsetReset===undefined) {
             this._options.autoOffsetReset = "latest";
         }
+        if (this._options.kafkaGroupId) {
+            this._globalConfig["group.id"] = this._options.kafkaGroupId;
+        }
+        if (this._options.messageMaxBytes) {
+            this._globalConfig["message.max.bytes"] = this._options.messageMaxBytes;
+        }
 
         // topic configs
         this._topicConfig["auto.offset.reset"] = this._options.autoOffsetReset;
 
         // global client options
         this._globalConfig ["metadata.broker.list"] = this._options.kafkaBrokerList;
-
-        if (this._options.kafkaGroupId) {
-            this._globalConfig["group.id"] = this._options.kafkaGroupId;
-        }
     }
 
     private _onReady(info: RDKafka.ReadyInfo, metadata: RDKafka.Metadata): void {
@@ -277,10 +280,11 @@ export class MLKafkaRawConsumer implements IRawMessageConsumer {
         })
     }
 
-    start(): Promise<void> {
+    // start(): Promise<void> { // this was originally
+    start(number = 0): Promise<void> {
         return new Promise((resolve, reject) => {
             if (!this._client.isConnected()) {
-                const err = new Error("MLRawKafkaConsumer - Client is not connected, cannot start()");
+                const err = new Error(`MLRawKafkaConsumer - Client is not connected, cannot start(${number})`);
                 this._logger?.isErrorEnabled() && this._logger.error(err);
                 reject(err);
             }
@@ -290,8 +294,39 @@ export class MLKafkaRawConsumer implements IRawMessageConsumer {
                 this._client.subscribe(this._topics);
             }
 
-            this._client.consume();
-            this._logger?.isInfoEnabled() && this._logger.info("MLRawKafkaConsumer - started");
+            if (number > 0) {
+                this._client.consume(number);    
+            } else {
+                this._client.consume();
+            }
+            // this._client.consume(); // this was originally
+            this._logger?.isInfoEnabled() && this._logger.info(`MLRawKafkaConsumer - started(${number})`);
+
+            resolve();
+        })
+    }
+
+    // added to try handle consuming by application layer
+    consume(number = 0): Promise<void> {
+        return new Promise((resolve, reject) => {
+            if (!this._client.isConnected()) {
+                const err = new Error(`MLRawKafkaConsumer - Client is not connected, cannot consume(${number})`);
+                this._logger?.isErrorEnabled() && this._logger.error(err);
+                reject(err);
+            }
+
+            // this._logger?.isInfoEnabled() && this._logger.info(`MLRawKafkaConsumer - Subscribing to topics ${JSON.stringify(this._topics)}`);
+            // if (Array.isArray(this._topics) && this._topics.length > 0) {
+            //     this._client.subscribe(this._topics);
+            // }
+
+            if (number > 0) {
+                this._client.consume(number);    
+            } else {
+                this._client.consume();
+            }
+            // this._client.consume(); // this was originally
+            this._logger?.isInfoEnabled() && this._logger.info(`MLRawKafkaConsumer - consume(${number})`);
 
             resolve();
         })

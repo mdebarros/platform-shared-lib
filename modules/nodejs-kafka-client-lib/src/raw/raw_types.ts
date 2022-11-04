@@ -53,7 +53,8 @@ export interface IRawMessageConsumer {
 
   connect: () => Promise<void>;
   disconnect: (force: boolean) => Promise<void>;
-  start: () => Promise<void>;
+  start: (number?: number) => Promise<void>;
+  consume: (number?: number) => Promise<void>;
   stop: () => Promise<void>;
 }
 
